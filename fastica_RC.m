@@ -25,7 +25,7 @@ function [W1,W, S_ica,Z] = fastica_RC(X, varargin)
 % 'epsilon'                 Criterio de detención. El valor por defecto es
 %                           0.00001.
 %
-% 'metodo'                  Método de ortogonalización utilizado.
+% 'approach'                  Método de ortogonalización utilizado.
 %                           Este puede ser ortogonalización deflacionaria
 %                           ('defl') o simétrica ('symm'). Por defecto se
 %                           utiliza ortogonalización deflacionaria.
@@ -167,7 +167,38 @@ if strcmp(approach, 'defl')
     S_ica = W*Z;
     
 elseif strcmp(approach, 'symm')
-    printf('Todavía no está programado.')
+    W = rand(m);
+    for p=1:m
+        W(:,p) = W(:,p)/norm(W(:,p));           % Valor inicial ||wp|| = 1
+    end
+    flag = true;
+    cont = 1;
+    while flag
+        Waux = W;
+        for p=1:m
+            [~,g,dg]=eval_g(W(:,p)'*Z,func);
+            W(:,p) = mean(dg)*W(:,p)-mean(Z*diag(g),2);
+        end
+        % Ortogonalizacion
+        W = sqrtm(W*W')\W;
+        cont=cont+1;
+        % Criterio de convergencia
+        if norm(W-Waux) < epsilon || norm(W+Waux) < epsilon
+            flag = false;
+            if flag_annot
+                disp('La matriz W satisface tolerancia');
+            end
+        elseif cont==maxiter
+            flag = false;
+            if flag_annot
+                disp(['No se alcanzo la tolerancia luego de ',...
+                    num2str(maxiter), ' iteraciones']);
+            end
+        end
+    end
+    W=W';
+    W1 = W*Q; 
+    S_ica = W*Z;
 else
     printf('Metodo cargado incorrecto.')
 end
